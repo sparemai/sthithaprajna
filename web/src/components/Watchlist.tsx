@@ -85,7 +85,7 @@ export function Watchlist() {
             <div className={`chg ${dirClass(w.change)}`}>{glyph(w.change)} {signedPct(w.change_pct, 2, false)}</div>
             <div className="hover-actions">
               <button onClick={(e) => { e.stopPropagation(); select(w.key, "terminal"); }} title="Chart"><CandlestickChart size={13} /></button>
-              {CHAIN_OK.has(w.symbol) && (
+              {snap?.product !== "intraday500" && CHAIN_OK.has(w.symbol) && (
                 <button onClick={(e) => { e.stopPropagation(); setChain(w.symbol); setRoute("chain"); }} title="Option chain"><Layers size={13} /></button>
               )}
             </div>

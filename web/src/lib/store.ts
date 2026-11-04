@@ -12,6 +12,10 @@ export const ROUTES: { id: Route; label: string }[] = [
   { id: "plan", label: "Plan" }, { id: "system", label: "System" },
 ];
 
+export function routesFor(product?: string) {
+  return product === "intraday500" ? ROUTES.filter((r) => !["chain", "plan", "research"].includes(r.id)) : ROUTES;
+}
+
 interface Toast { id: number; text: string }
 
 interface State {

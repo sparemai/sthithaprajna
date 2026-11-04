@@ -1,7 +1,7 @@
 import { CandlestickChart, Home, KeyRound, LayoutGrid, ListChecks, Radar, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { setToken } from "./lib/api";
-import { connect, reconnect, useStore } from "./lib/store";
+import { connect, reconnect, routesFor, useStore } from "./lib/store";
 import { BrandMark } from "./components/Brand";
 import { ApprovalDock, CommandPalette, Toasts } from "./components/Overlays";
 import { TopNav } from "./components/TopNav";
@@ -75,9 +75,9 @@ export default function App() {
   const setWatchOpen = useStore((s) => s.setWatchOpen);
   useEffect(() => { connect(); }, []);
   const tag = snap ? (snap.risk_mode === "unbounded" ? modeName(snap.mode) : snap.gear.effective) : "";
-  useEffect(() => { document.title = tag ? `${tag} · Sthitaprajna` : "Sthitaprajna Terminal"; }, [tag]);
+  useEffect(() => { document.title = tag ? `${tag} · Sthitaprajna${snap?.product === "intraday500" ? " Intraday 500" : ""}` : "Sthitaprajna Terminal"; }, [tag, snap?.product]);
   if (!snap) return <Splash />;
-  const View = VIEWS[route];
+  const View = routesFor(snap.product).some((r) => r.id === route) ? VIEWS[route] : Dashboard;
   return (
     <div className="shell">
       <TopNav />

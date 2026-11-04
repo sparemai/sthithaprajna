@@ -2,7 +2,7 @@ import { ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { act } from "../lib/api";
 import { num, pct, rMult, rupees } from "../lib/format";
-import { ROUTES, useStore } from "../lib/store";
+import { routesFor, useStore } from "../lib/store";
 import type { Approval, FunnelRecord } from "../lib/types";
 import { Checklist, CountdownRing, Drawer, Grade, KV } from "./ui";
 
@@ -100,7 +100,7 @@ export function CommandPalette() {
       COMMANDS.filter((c) => c.startsWith(s) && c !== s).forEach((c) => out.push({ label: c, hint: "command", run: () => setQ(c + " ") }));
       return out;
     }
-    ROUTES.filter((r) => !s || r.label.toLowerCase().includes(s)).forEach((r) => out.push({ label: r.label, hint: "go to", run: () => { setRoute(r.id); setPalette(false); } }));
+    routesFor(snap?.product).filter((r) => !s || r.label.toLowerCase().includes(s)).forEach((r) => out.push({ label: r.label, hint: "go to", run: () => { setRoute(r.id); setPalette(false); } }));
     (snap?.watch ?? []).filter((w) => s && (w.symbol.toLowerCase().includes(s) || w.name.toLowerCase().includes(s))).slice(0, 8)
       .forEach((w) => out.push({ label: `${w.symbol} · ${num(w.ltp)}`, hint: w.name, run: () => { select(w.key, "terminal"); setPalette(false); } }));
     if (!s) COMMANDS.slice(0, 5).forEach((c) => out.push({ label: c, hint: "command", run: () => run(c) }));

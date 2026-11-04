@@ -74,6 +74,7 @@ export interface SearchHit {
 }
 
 export interface Snapshot {
+  product?: "options" | "intraday500";
   type: "snapshot";
   clock: { now: string; day: string; session: string; minutes_into: number; speed: number; paused: boolean; weekday: string };
   mode: string; label: string; gates_missing: string[]; sim_regime: string; market: MarketInfo;

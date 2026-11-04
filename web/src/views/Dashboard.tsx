@@ -250,7 +250,7 @@ export function Dashboard() {
             <div className="row between"><span className="muted">Volatility</span><span className="chip">{snap.regime.volatility.replace("_", " ")} {snap.regime.vol_tags.join(" ")}</span></div>
             <div className="row between"><span className="muted">India VIX</span><span className="num"><b>{num(snap.regime.vix)}</b> <Delta v={snap.regime.vix_change}>{signedPct(snap.regime.vix_change)}</Delta></span></div>
             <div className="row between"><span className="muted">Breadth A/D</span><b className="num">{num(snap.regime.breadth_ad, 2)}</b></div>
-            <div className="row between"><span className="muted">Expiry regime</span><span className="chip">{snap.regime.expiry ?? "not an expiry day"}</span></div>
+            {snap.product !== "intraday500" && <div className="row between"><span className="muted">Expiry regime</span><span className="chip">{snap.regime.expiry ?? "not an expiry day"}</span></div>}
             <div className="row between"><span className="muted">Feeds</span><span className="chip" style={{ color: snap.feeds.entries_allowed ? "var(--up-text)" : "var(--down-text)" }}>{snap.feeds.situation.replace("_", " ")} · {snap.feeds.data_confidence.toFixed(1)}</span></div>
           </div>
         </Card>

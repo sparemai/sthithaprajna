@@ -2,7 +2,7 @@ import { Command, Menu, Moon, OctagonX, Sun, Wifi, WifiOff } from "lucide-react"
 import { useState } from "react";
 import { act } from "../lib/api";
 import { GEAR_COLOR, hm, rupees } from "../lib/format";
-import { ROUTES, useStore } from "../lib/store";
+import { routesFor, useStore } from "../lib/store";
 import { Brand } from "./Brand";
 
 export function TopNav() {
@@ -28,7 +28,7 @@ export function TopNav() {
       <button className="icon-btn menu-btn" aria-label="Watchlist" onClick={() => setWatchOpen(!watchOpen)}><Menu size={18} /></button>
       <Brand />
       <div className="nav-links">
-        {ROUTES.map((r) => (
+        {routesFor(snap?.product).map((r) => (
           <button key={r.id} className={`nav-link ${route === r.id ? "active" : ""}`} onClick={() => setRoute(r.id)}>
             {r.label}
             {r.id === "queue" && approvals > 0 && <span className="badge-dot">{approvals}</span>}

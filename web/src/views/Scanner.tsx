@@ -33,7 +33,7 @@ export function Scanner() {
   useEffect(() => {
     let alive = true;
     const load = () => {
-      const p = new URLSearchParams({ segment: seg, direction: dir, tradable: tradable ? "yes" : "all", q, limit: "300" });
+      const p = new URLSearchParams({ segment: seg, direction: dir, tradable: tradable ? "yes" : "all", q, limit: "600" });
       get(`/api/scanner?${p}`).then((d) => {
         if (!alive) return;
         setRows(d.rows); setTotal(d.total); setSummary(d.summary); setErr("");
@@ -47,15 +47,20 @@ export function Scanner() {
   if (!snap) return null;
   const s = summary ?? snap.scanner.summary;
   const live = snap.market?.source !== "SIM";
+  const cash = snap.product === "intraday500";
   return (
     <div className="view-enter">
       <h1 className="section-title">Scanner</h1>
       <p className="section-sub">
+        {cash ? <>NIFTY 500 cash stocks ranked by movement, volume, liquidity and momentum. Up to 20 qualifying
+          stocks enter detailed strategy evaluation for opening-range breaks and VWAP pullbacks, long or short.
+          No expiry requirement. {live ? "Daily baselines load gradually on first startup." : "All prices are synthetic simulation data."}</> : <>
         Every {live ? "NSE stock in Dhan's master" : "stock in the simulated universe"} is screened continuously for booming
         (or breaking-down) moves: move against its normal range, relative volume for the time of day, breakouts (day,
         previous day, 52-week), VWAP, momentum and order-book pressure. Sthitaprajna 2.0 is options-only: the best
         F&amp;O-eligible ones join the strategy universe automatically and are traded through their options.
-        Non-F&amp;O names are shown for context and are never traded here.
+        Non-F&amp;O names are shown for context and are never traded here.</>}
+
       </p>
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="kpis">
@@ -63,7 +68,7 @@ export function Scanner() {
           <Stat label="Ranked now" value={s.ranked} hint={`${s.baselines ?? 0} with daily baselines${s.baselines_pending ? `, ${s.baselines_pending} loading` : ""}`} />
           <Stat label="Booming (tradable)" value={s.booming} hint="score ≥ 55" />
           <Stat label="In the strategy universe" value={s.promoted?.length ?? 0} hint={(s.promoted ?? []).slice(0, 6).map((k) => k.split(":")[1]).join(", ") || "none promoted yet"} />
-          <Stat label="With options" value={s.fno ?? "–"} hint="F&O stocks" />
+          {!cash && <Stat label="With options" value={s.fno ?? "–"} hint="F&O stocks" />}
         </div>
         <div className="faint" style={{ fontSize: 12, marginTop: 10 }}>Score weights: {s.weights}. The score ranks candidates; strategies still decide each entry on their own analysis.</div>
       </div>
@@ -76,7 +81,7 @@ export function Scanner() {
               <input className="input" style={{ paddingLeft: 30, width: 170, height: 32 }} placeholder="Symbol or name" value={q}
                 onChange={(e) => setQ(e.target.value)} aria-label="Filter scanner" />
             </label>
-            <Seg value={seg} onChange={setSeg} options={[{ v: "all", label: "All" }, { v: "fno", label: "Options-eligible" }, { v: "cash", label: "No options" }]} />
+            {!cash && <Seg value={seg} onChange={setSeg} options={[{ v: "all", label: "All" }, { v: "fno", label: "Options-eligible" }, { v: "cash", label: "No options" }]} />}
             <Seg value={dir} onChange={setDir} options={[{ v: "all", label: "Both" }, { v: "up", label: "Up" }, { v: "down", label: "Down" }]} />
             <Seg value={tradable ? "yes" : "all"} onChange={(v) => setTradable(v === "yes")} options={[{ v: "yes", label: "Tradable" }, { v: "all", label: "Everything" }]} />
           </div>
@@ -89,7 +94,7 @@ export function Scanner() {
             <table className="t scanner-t">
               <thead><tr>
                 <th>Symbol</th><th className="r">LTP</th><th className="r">Change</th><th>Score</th><th>Move</th>
-                <th className="r">RVOL</th><th className="r">Turnover</th><th>Why it is on the list</th><th>Options</th><th>Status</th><th />
+                <th className="r">RVOL</th><th className="r">Turnover</th><th>Why it is on the list</th>{!cash && <th>Options</th>}<th>Status</th><th />
               </tr></thead>
               <tbody>
                 {rows.map((r) => (
@@ -104,7 +109,7 @@ export function Scanner() {
                     <td className="r num">{r.rvol === null ? "–" : `${r.rvol.toFixed(1)}×`}</td>
                     <td className="r num">₹{compact(r.turnover_cr * 1e7)}</td>
                     <td className="flags"><div className="row-wrap" style={{ gap: 4 }}>{r.flags.slice(0, 3).map((f) => <span key={f} className="chip">{f}</span>)}</div></td>
-                    <td>{r.fno ? <span className="chip chip-accent">lot {r.lot}</span> : <span className="faint" title="No options on this name: never traded in 2.0">no options</span>}</td>
+                    {!cash && <td>{r.fno ? <span className="chip chip-accent">lot {r.lot}</span> : <span className="faint" title="No options on this name: never traded in 2.0">no options</span>}</td>}
                     <td>{r.tradable
                       ? (r.active ? <span className="chip chip-up" title="In the strategy universe: strategies evaluate it bar by bar">active</span> : <span className="chip">tradable</span>)
                       : <span className="chip chip-warn" title={r.why_not}>{r.why_not.length > 26 ? `${r.why_not.slice(0, 26)}…` : r.why_not}</span>}</td>

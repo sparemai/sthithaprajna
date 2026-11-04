@@ -322,7 +322,7 @@ def create_app(engine: Engine | None = None, *, run_loop: bool = True, discord: 
         sr = None
         chain_syms = {k: sym for sym, k in list(INDEX_UNDERLYING_KEYS) + list(e.market.option_underlyings())}
         sym = chain_syms.get(key)
-        if sym:
+        if sym and not e.cash_only:
             exps = e.market.expiries(sym, 1)
             if exps:
                 spot, rows = e.market.chain(sym, exps[0])
@@ -346,6 +346,8 @@ def create_app(engine: Engine | None = None, *, run_loop: bool = True, discord: 
     @app.get("/api/chain")
     def chain(underlying: str = "NIFTY", expiry: str | None = None) -> dict[str, Any]:
         e = hub().engine
+        if e.cash_only:
+            raise HTTPException(404, "Option chains are not part of Intraday 500")
         u = underlying.upper()
         if u not in ("NIFTY", "SENSEX", "BANKNIFTY"):
             raise HTTPException(400, "underlying must be NIFTY, SENSEX or BANKNIFTY")
@@ -480,6 +482,8 @@ def create_app(engine: Engine | None = None, *, run_loop: bool = True, discord: 
     @app.get("/api/feasibility")
     def feas() -> dict[str, Any]:
         e = hub().engine
+        if e.cash_only:
+            raise HTTPException(404, "Option feasibility is not part of Intraday 500")
         return feasibility_table(e, e.cfg)
 
     # ------------------------------------------------------------------ research
@@ -522,6 +526,8 @@ def create_app(engine: Engine | None = None, *, run_loop: bool = True, discord: 
     @app.post("/api/research/backtest")
     def start_backtest(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
         h = hub()
+        if h.engine.cash_only:
+            raise HTTPException(400, "Intraday 500 historical strategy backtests are not implemented")
         days = int(min(max(int(body.get("days", 5)), 1), 30))
         seed = int(body.get("seed", 7))
         compare = bool(body.get("compare_staging", False))

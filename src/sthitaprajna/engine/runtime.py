@@ -117,6 +117,11 @@ class _FeatureCacheCtx:
         return self.e.market.instruments[key]
 
     def stock_keys(self):
+        if self.e.cash_only:
+            active = set(self.e.market.stock_keys)
+            return [r.key for r in self.e.scanner_rows if r.tradable and r.key in active
+                    and r.score >= float(self.e.scanner_cfg["promote_min_score"])][
+                        :int(self.e.scanner_cfg["promote_max"])]
         return self.e.market.stock_keys
 
     def index_keys(self):
@@ -208,8 +213,10 @@ class Engine:
     def __init__(self, cfg: OperatorConfig, rules: MarketRules, cal: MarketCalendar, *, mode: Mode = Mode.SIM,
                  seed: int = 7, start: dt.date | None = None, speed: float = 30.0, warmup_days: int = 5,
                  store: Any = None, wall_clock=time.monotonic, market: Any = None,
-                 feeds: tuple[Any, Any] | None = None, broker: Any = None) -> None:
+                 feeds: tuple[Any, Any] | None = None, broker: Any = None,
+                 strategies=None, stock_specs=None, cash_only: bool = False) -> None:
         self.cfg, self.rules, self.cal = cfg, rules, cal
+        self.cash_only = cash_only
         if market is not None and mode is Mode.SIM:
             mode = Mode.PAPER                          # real market data is never labelled SIMULATED
         resolved, missing = resolve_mode(mode, broker_live=bool(getattr(broker, "live", False)) and market is not None)
@@ -219,7 +226,7 @@ class Engine:
         self.wall = wall_clock
         if market is None:
             self.market = SimMarket(cal, seed=seed, start=start, warmup_days=warmup_days,
-                                    risk_free=float(rules.get("risk_free_rate", 0.065)))
+                                    risk_free=float(rules.get("risk_free_rate", 0.065)), stock_specs=stock_specs)
             self.primary = SimFeed(self.market, "DHAN", Source.DHAN, 70, 15, seed + 1)
             self.secondary = SimFeed(self.market, "UPSTOX", Source.UPSTOX, 120, 30, seed + 2)
             self.faults = FaultInjector(self.market, self.primary, self.secondary)
@@ -238,8 +245,7 @@ class Engine:
         self.guardian = RiskGuardian(cfg)
         self.funnel = PickupFunnel(cfg, self.charges, rules)
         self.funnel.on_terminal = self._on_funnel_terminal
-        self.strategies = all_strategies()             # options-only build (2.0): index + stock options, Zero-to-Hero,
-                                                        # at every tier and in both bounded and unbounded risk mode
+        self.strategies = all_strategies() if strategies is None else list(strategies)
         self.broker = broker if self.live_orders else PaperBroker(self.charges, api_down=self.faults.order_api_down,
                                                                   reject_storm=self.faults.reject_storm)
         self.ops = OpsLimiter(int(cfg.execution["max_orders_per_second"]))
@@ -588,7 +594,7 @@ class Engine:
         r.confidence = conf
         # expiry regime for the underlying expiring today (Nifty Tue / Sensex Thu)
         r.expiry = None
-        for und in ("NIFTY", "SENSEX"):
+        for und in (() if self.cash_only else ("NIFTY", "SENSEX")):
             if self.cal.is_expiry_day(und, self.now.date()):
                 spot, rows = self.market.chain(und)
                 s = chain_summary(rows, spot)
@@ -1187,7 +1193,7 @@ class Engine:
             if len(cds) < 2:
                 return None
             und = self.market.instruments[p.underlying_key].symbol
-            spot, rows = self.market.chain(und, p.instrument.expiry)
+            spot, rows = (price, []) if self.cash_only else self.market.chain(und, p.instrument.expiry)
         except Exception:
             return None
         return staging.reversal_lock(p, price, cds[-2], cds[-1], rows, spot, self.cfg.staging)
@@ -1532,6 +1538,8 @@ class Engine:
     def _snapshot_iv_history(self, day: dt.date) -> None:
         """One EOD ATM-IV point per index underlying, for the Chain view's IV rank/percentile (D-039).
         Best-effort: a chain fetch hiccup must never block end-of-day close-out."""
+        if self.cash_only:
+            return
         for und in ("NIFTY", "SENSEX", "BANKNIFTY"):
             try:
                 exps = self.market.expiries(und)

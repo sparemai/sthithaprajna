@@ -60,6 +60,8 @@ def _sleeve(e, ctx, eq_sod: float) -> dict[str, Any]:
 def expiry_calendar(e, count: int = 4) -> list[dict[str, Any]]:
     """D-054: upcoming expiries for every sleeve-eligible underlying, nearest first -- the planning
     surface the operator asked for ("an expiry calendar")."""
+    if e.cash_only:
+        return []
     today = e.now.date()
     out = []
     for und in ("NIFTY", "SENSEX", "BANKNIFTY"):
@@ -123,6 +125,7 @@ def snapshot(e, *, include_watch: bool = True) -> dict[str, Any]:
     margin_used = sum(e._margin_of(p.segment, p.avg_entry, p.qty) for p in e.positions.values())
     snap: dict[str, Any] = {
         "type": "snapshot",
+        "product": "intraday500" if e.cash_only else "options",
         "clock": {"now": now.isoformat(), "day": e.market.day.isoformat(), "session": session,
                   "minutes_into": _r(e.cal.minutes_into_session(now), 1), "speed": e.speed, "paused": e.paused,
                   "weekday": now.strftime("%A")},

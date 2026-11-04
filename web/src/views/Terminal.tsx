@@ -185,7 +185,7 @@ export function Terminal() {
         <div className="card span-9" style={{ padding: 10 }}>
           <div style={{ padding: "2px 8px 0" }}>
             <div className="muted" style={{ fontSize: 11, marginBottom: 2 }}>Expiry regime (today)</div>
-            <RegimeStrip field="expiry" />
+            {snap.product !== "intraday500" && <RegimeStrip field="expiry" />}
             <div className="muted" style={{ fontSize: 11, marginBottom: 2 }}>Trend regime</div>
             <RegimeStrip field="trend" />
           </div>

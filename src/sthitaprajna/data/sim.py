@@ -146,8 +146,10 @@ class SimMarket:
     source = Source.SIM
 
     def __init__(self, cal: MarketCalendar, seed: int = 7, start: dt.date | None = None,
-                 warmup_days: int = 5, risk_free: float = 0.065, max_candles: int = 3000) -> None:
+                 warmup_days: int = 5, risk_free: float = 0.065, max_candles: int = 3000,
+                 stock_specs: list[SimSpec] | None = None) -> None:
         self.cal = cal
+        self.stock_specs = list(STOCKS if stock_specs is None else stock_specs)
         self.rng = np.random.default_rng(seed)
         self.r = risk_free
         self.max_candles = max_candles
@@ -160,7 +162,7 @@ class SimMarket:
         self.vix_theta = 13.0
         self.states: dict[str, _State] = {}
         self.instruments: dict[str, Instrument] = {}
-        for spec in INDICES + STOCKS:
+        for spec in INDICES + self.stock_specs:
             k = key_for(spec)
             self.states[k] = _State(spec, k, spec.price, spec.price)
             self.instruments[k] = Instrument(
@@ -183,7 +185,7 @@ class SimMarket:
 
     @property
     def stock_keys(self) -> list[str]:
-        return [key_for(s) for s in STOCKS]
+        return [key_for(s) for s in self.stock_specs]
 
     def _vix(self) -> float:
         return self.states["NSE:INDIAVIX"].price
@@ -198,7 +200,7 @@ class SimMarket:
         self.market_drift = base
         # sorted: a set's order varies with hash randomisation and would break deterministic replay (A5.1)
         self.sector_drift = {sec: float(self.rng.normal(0, 0.5 * sd)) for sec in
-                             sorted({s.sector for s in STOCKS})}
+                             sorted({s.sector for s in self.stock_specs})}
         for st in self.states.values():
             sp = st.spec
             if sp.kind is Kind.EQUITY:
@@ -208,7 +210,7 @@ class SimMarket:
             elif sp.symbol in ("NIFTY", "SENSEX"):
                 st.day_drift = base
             elif sp.symbol == "BANKNIFTY":
-                st.day_drift = sp.beta * base + self.sector_drift["BANK"]
+                st.day_drift = sp.beta * base + self.sector_drift.get("BANK", 0.0)
 
     def _start_day(self, first: bool = False) -> None:
         self._draw_regime()
@@ -274,8 +276,8 @@ class SimMarket:
             elif sp.symbol == "SENSEX":
                 st.price *= math.exp(r_m + 0.12 * sd * u * math.sqrt(f) * float(self.rng.normal()))
             elif sp.symbol == "BANKNIFTY":
-                st.price *= math.exp(sp.beta * r_m + self.sector_drift["BANK"] * f
-                                     + 0.5 * sd * u * math.sqrt(f) * sector_z["BANK"])
+                st.price *= math.exp(sp.beta * r_m + self.sector_drift.get("BANK", 0.0) * f
+                                     + 0.5 * sd * u * math.sqrt(f) * sector_z.get("BANK", 0.0))
             else:
                 idio_sd = sp.vol / math.sqrt(252)
                 r = (sp.beta * r_m + (st.day_drift - sp.beta * self.market_drift) * f
