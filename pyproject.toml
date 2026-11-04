@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sthitaprajna"
+version = "2.0.0a1"
+description = "Sthitaprajna 2.0 - aggressive, risk-bounded, self-auditing INDEX & STOCK OPTIONS trading system for Indian markets (Dhan execution, Dhan + Upstox data). Not a guaranteed-return system."
+requires-python = ">=3.11"
+readme = "README.md"
+dependencies = [
+  "numpy>=1.26,<3",
+  "pyyaml>=6.0",
+  "pydantic>=2.7,<3",
+  "httpx>=0.27",
+  "tenacity>=8.2",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "websockets>=12",
+]
+
+[project.optional-dependencies]
+discord = ["discord.py>=2.3"]
+dev = ["pytest>=8", "hypothesis>=6.100", "ruff>=0.5"]
+
+[project.scripts]
+sthitaprajna = "sthitaprajna.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sthitaprajna = ["api/static/**/*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

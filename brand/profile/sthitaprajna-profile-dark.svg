@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Sthitaprajna</title>
+  <rect width="1024" height="1024" fill="#0B0C0E"/>
+  <g transform="translate(512 512) scale(22) translate(-16 -16)">
+    <circle cx="16" cy="16" r="13" fill="none" stroke="#F3F4F6" stroke-width="2.4"/>
+    <path d="M5 18h22" fill="none" stroke="#F3F4F6" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="16" cy="11" r="2.6" fill="#5B82F0"/>
+  </g>
+</svg>

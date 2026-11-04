@@ -1,0 +1,307 @@
+# Sthitaprajna market_rules (spec A4: "no market rule is hardcoded").
+#
+# Every rule carries: value, status, source_url, verified_on.
+#   status: VERIFIED            -> checked against a primary/official source on verified_on
+#           VERIFIED_SECONDARY  -> checked against a reputable secondary source on verified_on;
+#                                  confirm against the exchange circular / a Dhan contract note
+#           VERIFY              -> background knowledge, NOT verified. Code may use it only in
+#                                  SIM/PAPER; the go-live dossier lists it as an open item.
+#           UNKNOWN             -> no trustworthy value; a placeholder used by the simulator only.
+# The rules loader flags anything not re-verified in 30 days (A4) and every VERIFY/UNKNOWN rule.
+# Percentages are expressed as fractions (0.0005 == 0.05%).
+
+version: "2026-09-27"
+stale_after_days: 30
+
+rules:
+  # ---------------------------------------------------------------- derivatives
+  nifty_weekly_expiry_weekday:
+    value: TUE
+    status: VERIFIED
+    verified_on: 2026-09-27
+    source_url: https://www.share.market/buzz/insights/weekly-expiry-days-in-indian-fo-markets/
+    note: "Nifty 50 weekly every Tuesday, monthly last Tuesday, since 1 Sep 2025 (master prompt A4)."
+  sensex_weekly_expiry_weekday:
+    value: THU
+    status: VERIFIED
+    verified_on: 2026-09-27
+    source_url: https://strota.in/india-expiry-schedule
+    note: "BSE Sensex weekly every Thursday, monthly last Thursday."
+  banknifty_expiry:
+    value: MONTHLY_LAST_TUE
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/resources/exchange-communication-circulars
+    note: "Bank Nifty is monthly-only (VERIFIED in A4); the weekday (last Tuesday) is my inference from the Sep-2025 NSE move and is NOT verified."
+  expiry_holiday_shift:
+    value: PREVIOUS_TRADING_DAY
+    status: VERIFIED
+    verified_on: 2026-09-27
+    source_url: https://strota.in/india-expiry-schedule
+  lot_size_nifty:
+    value: 65
+    status: VERIFIED
+    verified_on: 2026-09-27
+    source_url: https://nsearchives.nseindia.com/content/circulars/FAOP70616.pdf
+    note: "DO NOT HARDCODE in strategies: refreshed from the Dhan instrument master every morning; this is the fallback."
+  lot_size_banknifty:
+    value: 30
+    status: VERIFIED
+    verified_on: 2026-09-27
+    source_url: https://hdfcsky.com/news/nse-revises-market-lot-sizes-for-major-index-derivatives-effective-january-2026
+  lot_size_sensex:
+    value: 20
+    status: VERIFIED
+    verified_on: 2026-09-27
+    source_url: https://www.sahi.com/blogs/nifty-lot-size-2026-bank-nifty-sensex
+  freeze_qty_nifty:
+    value: 3510
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-10-22
+    source_url: https://www.nseindia.com/resources/exchange-communication-circulars
+    note: "NSE circular NSE/FAOP/76693 (Ref 136/2026, dated 1 Oct 2026) raised the market-wide freeze qty to
+      3510 effective 5 Oct 2026, up from 1800 (which had held since Apr 2026 and was this field's old
+      placeholder value). Found via secondary reporting that cites the circular number/date, not a direct
+      fetch of the circular PDF -- confirm against the circular itself or a Dhan contract note before
+      relying on this in LIVE. One other secondary source claimed NIFTY stayed at 1800 after a Sept 2026
+      update; the dated NSE circular is treated as authoritative here. Orders auto-slice above this value,
+      but see the open item logged as D-050 about that slicing not yet being wired to actually submit
+      multiple orders."
+  freeze_qty_sensex:
+    value: 1000
+    status: UNKNOWN
+    verified_on: null
+    source_url: https://www.bseindia.com/
+    note: "Unresolved as of 2026-10-22: secondary sources cite roughly 1000 units but disagree on lot-count
+      attribution (100 lots vs 50 lots at a lot size of 10), and no dated 2026 BSE-specific circular was
+      found (unlike NIFTY/BANKNIFTY above). BSE's own contract master file (Abridged_CO, MaxTradQty field)
+      is the definitive source -- check that directly, or Dhan's Sensex options contract note, before
+      trading Sensex options live at any size near this figure."
+  freeze_qty_banknifty:
+    value: 1440
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-10-22
+    source_url: https://www.nseindia.com/resources/exchange-communication-circulars
+    note: "Same NSE circular as freeze_qty_nifty above (NSE/FAOP/76693, Ref 136/2026), effective 5 Oct 2026,
+      up from this field's old placeholder value of 900."
+  strike_step_nifty:
+    value: 50
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/products-services/equity-derivatives-contract-specifications
+  strike_step_sensex:
+    value: 100
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.bseindia.com/
+  strike_step_banknifty:
+    value: 100
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/products-services/equity-derivatives-contract-specifications
+  stock_fno_settlement:
+    value: PHYSICAL
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/
+    note: "Square off stock F&O before a configured time on expiry day unless delivery is intended."
+  stock_fno_expiry_squareoff_time:
+    value: "14:30"
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/
+
+  # ---------------------------------------------------------------- cash equity & session
+  session_open:
+    value: "09:15"
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/market-data/market-timings
+  session_close:
+    value: "15:30"
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/market-data/market-timings
+  preopen_start:
+    value: "09:00"
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/market-data/market-timings
+  cash_settlement_cycle:
+    value: T+1
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.sebi.gov.in/
+  broker_intraday_autosquareoff_time:
+    value: "15:20"
+    status: VERIFY
+    verified_on: null
+    source_url: https://docs.dhanhq.co/
+    note: "Dhan's MIS auto square-off time. The system exits on its own earlier (system_intraday_exit_time)."
+  system_intraday_exit_time:
+    value: "15:10"
+    status: VERIFIED
+    verified_on: 2026-09-27
+    source_url: docs/MASTER_PROMPT.md#a4-indian-market-ground-truth
+    note: "Operator/system policy, not an exchange rule: exit all MIS/intraday shorts before the broker square-off."
+
+  # ---------------------------------------------------------------- regulation
+  algo_id_mandatory_from:
+    value: 2026-04-01
+    status: VERIFIED
+    verified_on: 2026-09-27
+    source_url: https://upstox.com/news/market-news/financial-regulations/sebi-extends-timeline-for-retail-algo-trading-framework-sets-glide-path-for-brokers/article-182285/
+  algo_ops_threshold:
+    value: 10
+    status: VERIFIED
+    verified_on: 2026-09-27
+    source_url: https://righttoinformation.wiki/sebi-algo-trading-rules-retail-investors-2026
+    note: "Orders/sec threshold. The system's own hard cap is far below it (operator.yaml execution.max_orders_per_second)."
+
+  # ---------------------------------------------------------------- charges (fractions)
+  stt_equity_delivery:
+    value: 0.001
+    sides: [BUY, SELL]
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.chittorgarh.com/brokerage_charges/dhan/176/
+  stt_equity_intraday_sell:
+    value: 0.00025
+    sides: [SELL]
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.chittorgarh.com/brokerage_charges/dhan/176/
+  stt_futures_sell:
+    value: 0.0005
+    sides: [SELL]
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.icicidirect.com/futures-and-options/articles/stt-changes-in-budget-2026-what-f-o-traders-need-to-know
+    note: "Union Budget 2026: 0.02% -> 0.05%, effective for trades on/after 1 Apr 2026."
+  stt_options_sell_premium:
+    value: 0.0015
+    sides: [SELL]
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.hdfc.bank.in/blogs/union-budget/stt-hike-on-f-o-trading
+    note: "Union Budget 2026: 0.10% -> 0.15% of premium, effective 1 Apr 2026. Exercise also 0.15%."
+  stt_options_exercise:
+    value: 0.0015
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.hdfc.bank.in/blogs/union-budget/stt-hike-on-f-o-trading
+  exch_txn_nse_equity:
+    value: 0.0000297
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.business-standard.com/markets/stock-market-news/nse-and-bse-revise-their-transaction-fees-to-comply-with-sebi-circular-124092701207_1.html
+    note: "Rs 2.97 per lakh per side."
+  exch_txn_nse_futures:
+    value: 0.0000173
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.business-standard.com/markets/stock-market-news/nse-and-bse-revise-their-transaction-fees-to-comply-with-sebi-circular-124092701207_1.html
+  exch_txn_nse_options_premium:
+    value: 0.0003503
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.business-standard.com/markets/stock-market-news/nse-and-bse-revise-their-transaction-fees-to-comply-with-sebi-circular-124092701207_1.html
+  exch_txn_bse_index_options_premium:
+    value: 0.000325
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.angelone.in/exchange-transaction-charges
+    note: "Sensex/Bankex options: Rs 3,250 per crore of premium."
+  ipft_equity_and_futures:
+    value: 0.000001
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/
+    note: "NSE investor-protection fund charge, Rs 0.10 per lakh. Inferred from the gap between quoted all-in and base rates."
+  ipft_options_premium:
+    value: 0.000005
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.nseindia.com/
+  sebi_turnover_fee:
+    value: 0.000001
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.sebi.gov.in/
+    note: "Rs 10 per crore."
+  stamp_duty_delivery_buy:
+    value: 0.00015
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.indiacode.nic.in/
+  stamp_duty_intraday_buy:
+    value: 0.00003
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.indiacode.nic.in/
+  stamp_duty_futures_buy:
+    value: 0.00002
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.indiacode.nic.in/
+  stamp_duty_options_buy:
+    value: 0.00003
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.indiacode.nic.in/
+  gst_rate:
+    value: 0.18
+    status: VERIFY
+    verified_on: null
+    source_url: https://cbic-gst.gov.in/
+    note: "On brokerage + exchange transaction + SEBI fee."
+  brokerage_intraday_and_futures:
+    value: {flat: 20.0, pct: 0.0003}
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.chittorgarh.com/brokerage_charges/dhan/176/
+    note: "Lower of Rs 20 or 0.03% per executed order."
+  brokerage_options:
+    value: {flat: 20.0, pct: null}
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.chittorgarh.com/brokerage_charges/dhan/176/
+  brokerage_delivery:
+    value: {flat: 0.0, pct: null}
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.chittorgarh.com/brokerage_charges/dhan/176/
+  dp_charge_per_scrip_sell_day:
+    value: 12.5
+    status: VERIFIED_SECONDARY
+    verified_on: 2026-09-27
+    source_url: https://www.chittorgarh.com/brokerage_charges/dhan/176/
+    note: "Plus GST."
+
+  # ---------------------------------------------------------------- Dhan data API limits (PAPER on live data)
+  dhan_quote_min_interval_s:
+    value: 1.25
+    status: VERIFY
+    verified_on: null
+    source_url: https://docs.dhanhq.co/
+    note: "Market-quote APIs (/marketfeed/quote|ohlc|ltp): believed 1 request/second, up to 1000 instruments per request. Measured from the previous RESPONSE: on 2026-09-27 the operator's first dhan-check got HTTP 429 with 1.05 s send-to-send spacing (first request also opened the connection)."
+  dhan_option_chain_min_interval_s:
+    value: 3.1
+    status: VERIFY
+    verified_on: null
+    source_url: https://docs.dhanhq.co/
+    note: "Option chain: believed 1 unique request per 3 seconds."
+  dhan_data_min_interval_s:
+    value: 0.34
+    status: VERIFY
+    verified_on: null
+    source_url: https://docs.dhanhq.co/
+    note: "Data APIs (charts, expiry list): believed 5 requests/second; ~3/s used for headroom."
+
+  # ---------------------------------------------------------------- model parameters (not exchange rules)
+  risk_free_rate:
+    value: 0.065
+    status: VERIFY
+    verified_on: null
+    source_url: https://www.rbi.org.in/
+    note: "Used only by Black-76 in the simulator/analytics. Refresh from the RBI T-bill yield."

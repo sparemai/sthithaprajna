@@ -1,0 +1,179 @@
+# PART D: OPERATOR CONFIGURATION (v3.0)  -- docs/MASTER_PROMPT.md Part D
+#
+# Only the operator changes this file (B0 human gate (e)). The learning loop and the Aggression
+# Layer never write to it. Hard ceilings (D12.2) are NOT here: they are constants in
+# src/sthitaprajna/risk/ceilings.py, and this file is validated so it can only be STRICTER.
+
+# ---------------------------------------------------------------------------------------------------
+# RISK MODE -- operator decision, 05 Oct 2026 (docs/decisions.md D-049): switched to `unbounded`,
+# reversing the 28 Sep D-036 default. The operator ran unbounded in a live paper session (confirmed from
+# that session's own log format) and then set this explicitly in their local checkout; this commit makes
+# it official rather than leave it as an uncommitted local diff. capital_per_trade kept at its 0.25
+# default -- no change requested there. Operator was told, before this was made official, that unbounded
+# mode also skips the mandatory operator-approval-per-entry gate on LIVE orders (not just the risk
+# ceilings) -- irrelevant in PAPER/SIM, but it will matter the moment `--mode live` is ever used with this
+# config.
+#   unbounded: sizing from capital, one full entry with a stop-loss and a target, every stock and stock
+#              options allowed. No gears, per-trade/open-risk ceilings, loss limits, ruin floor, tiers,
+#              staging or approvals. Only what the market, broker or law enforces stays (market hours,
+#              funds/lot sizes, SEBI order rate, fresh data) plus the operator's own KILL switch.
+#   bounded:   the v3.0 spec, aggressive-tuned for 2.0 -- every section below this block applies.
+#
+# 22 Oct 2026 (D-051): capital_per_trade 0.25 -> 0.40, operator's explicit choice after being told the
+# arithmetic consequence -- there is no leverage on long option buying here, so a bigger per-trade share
+# of the same free capital means FEWER positions can be open at once (roughly 4 -> roughly 2 at this
+# equity), not more. The operator picked bigger-size-fewer-at-once over the alternative (smaller size,
+# more at once) when asked directly which axis to move.
+risk_mode: unbounded
+unbounded:
+  capital_per_trade: 0.40        # share of equity one new trade uses (1.0 = everything on one trade)
+  intraday_leverage: 1.0         # cash intraday: Rs of stock per Rs of capital (Dhan's MIS allows more [VERIFY])
+  trail_to_breakeven_at_r: 1.0   # move the stop-loss to the entry price once the trade is +1R (0 = off)
+  zero_to_hero_capital: 0.03     # ticket size of the expiry lottery strategy (it expects most tickets to expire worthless)
+  min_net_ev_r: 0.0              # analysis filter: skip only setups whose expected value after costs is negative
+
+scanner:                    # Opportunity Scanner over every NSE stock (S1 SCAN; weights PLACEHOLDER until calibrated)
+  interval_seconds: 15      # rescan the whole universe this often
+  promote_max: 20           # booming stocks added to the strategy universe at the same time
+  promote_min_score: 0.55   # scanner score (0-1) needed to join the strategy universe
+  demote_below_score: 0.35  # ...and leave it after staying below this for demote_after_minutes (never with a position)
+  demote_after_minutes: 15
+
+capital:
+  starting: 100000          # Rs 1,00,000
+  ruin_floor_abs: 70000     # ruin floor = max(ruin_floor_abs, ruin_floor_pct_of_peak x all-time peak)
+  ruin_floor_pct_of_peak: 0.70
+
+tiers:                      # D3, aggressive-tuned for 2.0 (D-036). attack_r = ATTACK gear R as a fraction of equity
+  - {name: T1, min_equity: 0,       attack_r: 0.0417, max_positions: 5, max_trades_per_day: 10}
+  - {name: T2, min_equity: 200000,  attack_r: 0.0350, max_positions: 6, max_trades_per_day: 12}
+  - {name: T3, min_equity: 500000,  attack_r: 0.0283, max_positions: 7, max_trades_per_day: 14}
+  - {name: T4, min_equity: 1000000, attack_r: 0.0250, max_positions: 8, max_trades_per_day: 16}
+
+gears:                      # D12.2 at Tier 1, aggressive-tuned for 2.0 (D-036): same ladder shape and the
+                             # same R/open-risk ratios as v1's bounded spec, scaled up to the new ceilings
+                             # (risk/ceilings.py: 5.0% per trade, 10.0% open risk, 30% halt). Lower tiers
+                             # scale R and open risk by attack_r / 0.0417.
+  ATTACK:   {dd_below: 0.12, r: 0.0417, open_risk: 0.100, grades: ["A+", "A", "B"], pressing: true,  reentry: true,  sleeve: true,  defined_risk_only: false, overnight: true}
+  PRESS:    {dd_below: 0.18, r: 0.0333, open_risk: 0.083, grades: ["A+", "A", "B"], pressing: true,  reentry: true,  sleeve: false, defined_risk_only: false, overnight: true}
+  GUARD:    {dd_below: 0.23, r: 0.0167, open_risk: 0.050, grades: ["A+", "A"],      pressing: false, reentry: false, sleeve: false, defined_risk_only: false, overnight: false}
+  PRESERVE: {dd_below: 0.28, r: 0.0083, open_risk: 0.025, grades: ["A+", "A"],      pressing: false, reentry: false, sleeve: false, defined_risk_only: true,  overnight: false}
+  HALTED:   {dd_below: 1.00, r: 0.0,    open_risk: 0.0,   grades: [],               pressing: false, reentry: false, sleeve: false, defined_risk_only: true,  overnight: false}
+  upshift_clean_days: 5     # D12.3: consecutive trading days without a daily-loss breach (unchanged: recovery discipline doesn't loosen)
+  a_plus_max_dd: 0.05       # A+ multiplier only while drawdown < 5% (unchanged)
+
+grades:                     # D12.5 (bands are placeholders until Phase 5 calibration)
+  A+: {multiplier: 1.2, min_quality_pct: 0.90, min_ev_r: 0.30, min_confidence: 0.70, staging: full, max_open: 1}
+  A:  {multiplier: 1.0, min_quality_pct: 0.70, min_ev_r: 0.20, min_confidence: 0.0,  staging: full, max_open: 99}
+  B:  {multiplier: 0.5, min_quality_pct: 0.0,  min_ev_r: 0.10, min_confidence: 0.0,  staging: probe_only, max_open: 99}
+
+edge_margin:                # D4 EV margin of safety
+  min_net_ev_r: 0.10
+  min_gross_edge_to_cost: 2.0
+
+staging:                    # D12.6 starting values
+  probe_fraction: 0.5
+  confirm_add_min_r: 0.5
+  press_max_adds: 2
+  press_add_fraction_of_full: 0.5
+  press_min_open_profit_r: 1.0
+  press_lock_from_r: 2.0
+  press_lock_fraction: 0.5
+  harvest_at_r: 2.0
+  harvest_fraction: 0.4
+  reentry_max_per_setup_per_day: 1
+  # D-042: below the 2R lock/harvest threshold above, a fast move that reverses before 2R had zero
+  # profit protection (a single lot can't be partially harvested -- see aggression/staging.py). These
+  # two earlier tiers only ever tighten the stop, never loosen it, same invariant as the rest of staging.
+  breakeven_at_r: 0.5        # move stop to entry price once open profit reaches this many R
+  early_lock_at_r: 1.0       # start locking a fraction of open profit once open profit reaches this many R
+  early_lock_fraction: 0.3   # fraction of open profit locked in at early_lock_at_r (vs 0.5 from press_lock_from_r)
+  # D-045: on the contract's OWN expiry day, extrinsic value decays on a convex curve into the close, so
+  # the same open profit is worth locking in sooner than on a normal day -- these replace breakeven_at_r/
+  # early_lock_at_r (not harvest_at_r/press_lock_from_r) only for a position expiring today.
+  expiry_breakeven_at_r: 0.3
+  expiry_early_lock_at_r: 0.6
+  # D-053: active, leading evidence on top of all the passive R-multiple tiers above -- a candle pattern
+  # reversing against the position's view AND an opposing option-chain OI shift, together (not either
+  # alone), tighten the stop immediately rather than waiting for the next R threshold. New and
+  # unvalidated, like every strategy's own hypothesis card; reversal_exit_enabled: false turns it off
+  # without touching the R-based tiers above.
+  reversal_exit_enabled: true
+  reversal_lock_fraction: 0.5   # fraction of open profit locked in when reversal evidence fires
+  # D-058: a real trade armed this on literally the first positive tick after entry and locked in a
+  # near-nothing profit minutes in -- require at least this much favourable move first.
+  reversal_lock_min_r: 0.3
+
+limits:                     # D4, aggressive-tuned for 2.0 (D-036): same ratio to the per-trade ceiling as v1
+  daily_loss: 0.08
+  weekly_loss: 0.15
+  monthly_loss: 0.22
+  giveback_trigger_gear_r_multiple: 1.5
+  giveback_fraction: 0.5
+  streak_cooldown_losses: 3
+  streak_cooldown_minutes: 30
+  streak_stop_losses: 4
+  margin_utilisation: 0.50
+  cash_intraday_single_notional_x: 1.0
+  cash_intraday_gross_notional_x: 2.0
+  cash_delivery_single: 0.30
+  cash_delivery_total: 0.60
+  high_beta_threshold: 1.2  # stocks at/above this beta count toward the same-direction index bucket
+  naked_option_selling: false
+
+edge_brake:                 # D12.4
+  start_after_trades: 50
+  window: 150
+  floor_r: 0.010
+  kelly_fraction: 0.25
+  expectancy_review_after: 100
+
+targets:                    # D5
+  ratchet_floor_fraction: 0.5
+  feasibility: {realistic: 0.50, stretch: 0.20}
+  min_validated_trades_for_probability: 50
+
+sleeve:                     # D8 Moonshot / Zero-to-Hero, aggressive-tuned for 2.0 (D-036): roughly double v1's
+                             # budget, still ring-fenced and still off in LIVE until paper evidence justifies it
+                             # D-061, OPERATOR DECISION (29 Oct 2026): doubled again from the D-036 numbers --
+                             # the operator asked for more room to size up expiry-afternoon convex bets, after
+                             # D-059 found a real SENSEX trend-expiry move the old Rs 3,156 budget priced out
+                             # of affordability. Same ratios preserved (week = 2x expiry, month = 2x week);
+                             # kill_cumulative_loss deliberately left UNCHANGED as the sleeve's hard stop --
+                             # bigger bets now reach that 10% circuit breaker in fewer losing trades, not more
+                             # total capital at risk than before.
+  enabled_live: false
+  per_expiry: 0.03
+  per_week: 0.06
+  per_month: 0.14
+  kill_cumulative_loss: 0.10
+
+approvals:                  # D9
+  timeout_seconds: 60
+  live_pilot_every_entry_and_add: true
+  sim_require_approval: false   # SIM/PAPER convenience; LIVE_PILOT always requires approval
+
+overnight:                  # D7 -- OFF until calibration shows TQS>=85 band earns more
+  enabled: false
+  min_quality_score: 85
+  decision_window: ["15:00", "15:15"]
+
+execution:
+  max_orders_per_second: 3      # far below SEBI's 10 OPS threshold
+  broker_stop_buffer_ticks: 4   # broker-side SL rests beyond the system stop by max(4 ticks, 0.15R)
+  broker_stop_buffer_r: 0.15
+  order_timeout_seconds: 20
+  reject_storm_threshold: 5     # rejects within 60 s -> operational halt
+
+data:
+  stale_after_seconds: 5
+  disagree_bps: 5
+  disagree_ticks: 2
+  disagree_persist_seconds: 3
+  secondary_down_confidence_cap: 0.8
+  both_down_flatten_after_seconds: 300
+  min_data_confidence: 0.6
+
+discord:
+  enabled: false                # human gate (a): bot token + operator user id via env
+  unreachable_email_after_seconds: 120

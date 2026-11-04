@@ -1,0 +1,157 @@
+/* Sthitaprajna design tokens -- Tesla-light by default, a selected dark theme (not an automatic flip).
+   Chart colors were validated with the dataviz palette validator:
+   light up/down #0f8a5f/#d93d3d (CVD dE 8.3), dark #0f9a73/#f05d4f (dE 7.3 -> always paired with
+   a secondary cue: sign, arrow glyph, hollow/filled candle). Call/Put OI blue/orange pass both modes. */
+:root {
+  color-scheme: light;
+  --font: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --bg: #ffffff;
+  --bg-subtle: #f4f4f4;
+  --bg-hover: rgba(23, 26, 32, 0.05);
+  --bg-press: rgba(23, 26, 32, 0.09);
+  --surface: #ffffff;
+  --surface-2: #f7f7f8;
+  --surface-3: #efeff1;
+  --glass: rgba(255, 255, 255, 0.78);
+  --line: #e8e8ea;
+  --line-strong: #d4d5d8;
+  --ink: #171a20;
+  --ink-2: #393c41;
+  --muted: #5c5e62;
+  --faint: #8e9096;
+
+  --accent: #3e6ae1;
+  --accent-hover: #3457c4;
+  --accent-ink: #ffffff;
+  --accent-wash: rgba(62, 106, 225, 0.08);
+  --accent-wash-2: rgba(62, 106, 225, 0.16);
+
+  --up: #0f8a5f;
+  --up-text: #0b7a53;
+  --up-wash: rgba(15, 138, 95, 0.08);
+  --down: #d93d3d;
+  --down-text: #c4312f;
+  --down-wash: rgba(217, 61, 61, 0.08);
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --warning-text: #946200;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+
+  --call: #2a78d6;
+  --put: #eb6834;
+
+  --g-attack: #3e6ae1;
+  --g-press: #6c5ce7;
+  --g-guard: #d99a1e;
+  --g-preserve: #e2733b;
+  --g-halted: #d03b3b;
+
+  --grid: #eeeef0;
+  --axis: #c9cacd;
+
+  --r-xs: 3px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 20px;
+
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-2: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px rgba(16, 24, 40, 0.07);
+  --shadow-3: 0 24px 64px rgba(16, 24, 40, 0.16);
+
+  --ease: cubic-bezier(0.5, 0, 0, 0.75);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur: 0.33s;
+
+  --nav-h: 56px;
+  --watch-w: 336px;
+
+  --hero-sky-1: #eaf1fc;
+  --hero-sky-2: #f6f8fc;
+  --hero-sky-3: #ffffff;
+  --hero-sun: rgba(255, 196, 120, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --bg: #0b0c0e;
+    --bg-subtle: #15171b;
+    --bg-hover: rgba(255, 255, 255, 0.06);
+    --bg-press: rgba(255, 255, 255, 0.1);
+    --surface: #111317;
+    --surface-2: #16181d;
+    --surface-3: #1d2026;
+    --glass: rgba(17, 19, 23, 0.78);
+    --line: #23262c;
+    --line-strong: #2f333a;
+    --ink: #f3f4f6;
+    --ink-2: #d2d4d8;
+    --muted: #a0a3aa;
+    --faint: #70747c;
+    --accent: #5b82f0;
+    --accent-hover: #7596f3;
+    --accent-wash: rgba(91, 130, 240, 0.12);
+    --accent-wash-2: rgba(91, 130, 240, 0.22);
+    --up: #0f9a73;
+    --up-text: #34c48f;
+    --up-wash: rgba(15, 154, 115, 0.14);
+    --down: #f05d4f;
+    --down-text: #ff7d70;
+    --down-wash: rgba(240, 93, 79, 0.14);
+    --warning-text: #fab219;
+    --call: #3987e5;
+    --put: #d95926;
+    --grid: #1e2126;
+    --axis: #3a3e45;
+    --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.35);
+    --shadow-3: 0 24px 64px rgba(0, 0, 0, 0.55);
+    --hero-sky-1: #0f1522;
+    --hero-sky-2: #0c0f16;
+    --hero-sky-3: #0b0c0e;
+    --hero-sun: rgba(91, 130, 240, 0.18);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0c0e;
+  --bg-subtle: #15171b;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-press: rgba(255, 255, 255, 0.1);
+  --surface: #111317;
+  --surface-2: #16181d;
+  --surface-3: #1d2026;
+  --glass: rgba(17, 19, 23, 0.78);
+  --line: #23262c;
+  --line-strong: #2f333a;
+  --ink: #f3f4f6;
+  --ink-2: #d2d4d8;
+  --muted: #a0a3aa;
+  --faint: #70747c;
+  --accent: #5b82f0;
+  --accent-hover: #7596f3;
+  --accent-wash: rgba(91, 130, 240, 0.12);
+  --accent-wash-2: rgba(91, 130, 240, 0.22);
+  --up: #0f9a73;
+  --up-text: #34c48f;
+  --up-wash: rgba(15, 154, 115, 0.14);
+  --down: #f05d4f;
+  --down-text: #ff7d70;
+  --down-wash: rgba(240, 93, 79, 0.14);
+  --warning-text: #fab219;
+  --call: #3987e5;
+  --put: #d95926;
+  --grid: #1e2126;
+  --axis: #3a3e45;
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 24px 64px rgba(0, 0, 0, 0.55);
+  --hero-sky-1: #0f1522;
+  --hero-sky-2: #0c0f16;
+  --hero-sky-3: #0b0c0e;
+  --hero-sun: rgba(91, 130, 240, 0.18);
+}
