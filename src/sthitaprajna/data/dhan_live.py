@@ -63,8 +63,8 @@ FIXES = {
     "RATE": "Dhan's rate limit was hit even after retries. Another program using the same Dhan account's API at "
             "the same time counts too (for example a running `sthitaprajna serve --mode paper`): stop it, wait a "
             "minute and try again. While running, Sthitaprajna backs off by itself.",
-    "INPUT": "Dhan rejected a request as invalid. This is a bug in Sthitaprajna's request: run "
-             "`sthitaprajna dhan-check` and share its output (it contains no secrets).",
+    "INPUT": "Dhan rejected this request. HTTP 400 alone does not establish the cause. Run "
+             "`sthitaprajna dhan-check` to inspect the provider error and isolate the failing segment.",
     "ORDER": "Unexpected order error from a read-only call.",
     "NO_DATA": "Dhan returned no data for this request.",
     "SERVER": "Dhan's servers returned an error; retrying.",
@@ -109,19 +109,47 @@ def error_from_response(r: httpx.Response, secret: str = "") -> DhanError:
         body = r.json()
     except ValueError:
         body = None
-    code = _find(body, ("errorCode", "error_code"))
+    code = _find(body, ("errorCode", "error_code", "code"))
     msg = _find(body, ("errorMessage", "error_message", "message"))
+    # Some market-data responses use {"data": {"<numeric code>": "reason"}}.
+    # Preserve the code/reason without guessing that REST codes mean the same as WS codes.
+    if isinstance(body, dict):
+        for field in ("data", "remarks", "error"):
+            value = body.get(field)
+            if isinstance(value, str) and value and not msg:
+                msg = value
+            elif isinstance(value, dict):
+                for key, reason in value.items():
+                    if str(key).isdigit() and isinstance(reason, str) and reason:
+                        code = code or str(key)
+                        msg = msg or reason
+                        break
     kind = ERROR_KINDS.get(str(code).strip()) if code else None
     if kind is None:
-        s = r.status_code
-        kind = "AUTH" if s in (401, 403) else "RATE" if s == 429 else "SERVER" if s >= 500 else "INPUT"
-    text = f"Dhan {r.request.url.path}: HTTP {r.status_code}" + (f" {code}" if code else "")
+        status = r.status_code
+        kind = "AUTH" if status in (401, 403) else "RATE" if status == 429 else "SERVER" if status >= 500 else "INPUT"
+
+    # Redact before truncation: truncating first can expose part of a long token.
+    secrets = {secret, r.request.headers.get("access-token", ""), r.request.headers.get("client-id", "")}
+    def safe(value: Any) -> str:
+        text = str(value)
+        for credential in sorted((x for x in secrets if x), key=len, reverse=True):
+            text = text.replace(credential, "***")
+        return " ".join(text.split())[:300]
+
+    safe_code = safe(code) if code else None
+    text = f"Dhan {r.request.url.path}: HTTP {r.status_code}" + (f" code={safe_code}" if safe_code else "")
     if msg:
-        m = str(msg)[:200]
-        if secret:
-            m = m.replace(secret, "***")
-        text += f": {m}"
-    return DhanError(kind, text, code=str(code) if code else None, status=r.status_code)
+        text += ": " + safe(msg)
+    elif body is None:
+        text += ": non-JSON error response (body omitted)"
+    elif isinstance(body, dict):
+        text += ": no recognised error message; response fields=" + safe(", ".join(map(str, body)))
+        if isinstance(body.get("status"), (str, int)):
+            text += "; status=" + safe(body["status"])
+    else:
+        text += ": unexpected error response format (body omitted)"
+    return DhanError(kind, text, code=safe_code, status=r.status_code)
 
 
 def checked_url(url: str) -> str:
@@ -307,7 +335,7 @@ class DhanClient:
                     body = r.json()
                 except ValueError:
                     raise DhanError("OTHER", f"Dhan {path}: response is not JSON") from None
-                if isinstance(body, dict) and str(body.get("status", "")).lower() == "failure":
+                if isinstance(body, dict) and str(body.get("status", "")).lower() in ("failure", "failed", "error"):
                     err = error_from_response(r, self._secret)
             if err is None:
                 return body
@@ -338,13 +366,13 @@ class DhanClient:
             try:
                 out.update(self.marketfeed(want_quote, "quote"))
             except DhanError as exc:
-                if exc.kind != "INPUT":
+                if exc.kind != "INPUT" or exc.code != "DH-905":
                     raise
                 for seg, ids in want_quote.items():     # find the segment Dhan will not quote
                     try:
                         out.update(self.marketfeed({seg: ids}, "quote"))
                     except DhanError as exc2:
-                        if exc2.kind != "INPUT":
+                        if exc2.kind != "INPUT" or exc2.code != "DH-905":
                             raise
                         self.segments_without_quote.add(seg)
                         want_ohlc[seg] = ids

@@ -70,6 +70,19 @@ def run_check(out: Callable[[str], None] = print, *, client: DhanClient | None =
         raw = client._post("quote", "/marketfeed/quote", segs)      # one request: fields and prices together
     except DhanError as exc:
         step("market quotes", exc.explain(), False)
+        if exc.kind in ("INPUT", "OTHER"):
+            # Public instrument IDs only, never headers or credentials. Keep the same
+            # rate limiter and isolate each segment rather than silently changing APIs.
+            for segment, ids in segs.items():
+                out(f"        request: {segment}, security IDs={ids}")
+                try:
+                    isolated = client.marketfeed({segment: ids}, "quote")
+                    step(f"quotes {segment}", f"{len(isolated)}/{len(ids)} returned", bool(isolated))
+                except DhanError as isolated_error:
+                    step(f"quotes {segment}", isolated_error.explain(), False)
+                    if isolated_error.fatal or isolated_error.kind == "RATE":
+                        break
+        client.close()
         out("Result: NOT READY")
         return 1
     data = (raw or {}).get("data") or {}

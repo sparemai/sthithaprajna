@@ -327,3 +327,20 @@ Final validation: full Python regression run 300 passed / 2 skipped; dedicated
 all-day suite 37 passed (including the subsequently added 15:00 expiry-day scalp
 case); frontend 14 passed and production build passed. Skipped tests were not
 counted as validated. SIM HTTP and WebSocket custom-port checks passed.
+
+
+## 2026-11-04 — Dhan HTTP 400 diagnostics
+
+A Windows PAPER startup and dhan-check both received HTTP 400 from market quotes.
+The previous diagnostic inferred a software defect without exposing the provider's
+reason. Error parsing now supports numeric-code maps under data/remarks/error and
+string reasons, redacts both token and client ID before truncation, and avoids
+printing arbitrary non-JSON bodies. Failed/error statuses in HTTP 200 responses
+are also treated as failures. OHLC fallback is limited to explicit DH-905 input
+errors; an unexplained 400 no longer silently switches endpoints. The check command
+isolates index and equity segments after an input/unknown failure using the same
+rate limiter. Account/rate failures stop further probes.
+
+Validation: 42 diagnostic, market-data and order regression tests passed against
+mock APIs/local test servers. The user's actual Dhan response is still needed;
+this update improves diagnosis and does not claim live connectivity is fixed.
