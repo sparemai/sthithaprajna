@@ -344,3 +344,15 @@ rate limiter. Account/rate failures stop further probes.
 Validation: 42 diagnostic, market-data and order regression tests passed against
 mock APIs/local test servers. The user's actual Dhan response is still needed;
 this update improves diagnosis and does not claim live connectivity is fixed.
+
+
+## 2026-11-04 — read-only HTTP request comparison
+
+The user's quote failures return non-JSON HTTP 400 for both index and equity
+segments. Added `python -m sthitaprajna.data.dhan_http_probe` to compare compact
+JSON, spaced JSON, and the current official Dhan SDK body with dhanClientId.
+All three calls target only the HTTPS quote endpoint and retain TLS verification
+and inherited proxy settings. Short response excerpts redact credentials before
+truncation; the tool never changes configuration or calls order endpoints.
+Five probe tests plus nine diagnostic tests passed. Root cause and live-account
+connectivity remain unverified until the user's response excerpts are available.
